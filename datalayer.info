@@ -1,9 +1,0 @@
-name = Data Layer
-description = Output page meta data for client-side availability.
-dependencies[] = libraries
-package = Other
-core = 7.x
-
-; Tests
-files[] = tests/datalayer.unit.test
-files[] = tests/datalayer.web.test

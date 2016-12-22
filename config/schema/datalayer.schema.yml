@@ -1,0 +1,14 @@
+datalayer.settings:
+  type: mapping
+  label: Settings
+  mapping:
+    datalayer_add_page_meta:
+      type: boolean
+    datalayer_output_terms:
+      type: boolean
+    datalayer_lib_helper:
+      type: boolean
+    datalayer_global_entity_meta:
+      type: integer
+    datalayer_vocabs:
+      type: integer

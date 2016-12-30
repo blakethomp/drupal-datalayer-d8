@@ -292,7 +292,7 @@ function _datalayer_get_entity_data($entity) {
     if (empty($selected_properties)) {
       // Include all in output, only entity valid.
       foreach ($properties as $p) {
-        if (isset($entity->$p)) {
+        if (isset($entity->$p) && method_exists($entity->$p, 'getString')) {
           $output_data['entity' . ucfirst($p)] = $entity->$p->getString();
         }
       }
@@ -308,8 +308,8 @@ function _datalayer_get_entity_data($entity) {
 
     // For entities with an owner/author, get the username
     if ((empty($selected_properties) || array_key_exists('name', $properties))
-      && !isset($output_data['entityName']) && method_exists($entity, 'getOwner')) {
-      $output_data['entityName'] = $entity->getOwner()->getUsername();
+      && !isset($output_data['entityName']) && is_object($entity->uid)) {
+      $output_data['entityName'] = $entity->uid->entity->name->getString();
     }
 
     // Output field data.
@@ -400,8 +400,6 @@ function _datalayer_defaults() {
 function _datalayer_menu_get_any_object() {
   // Figure out if a content entity is being viewed.
   $route_match = \Drupal::routeMatch();
-  $route_name = $route_match->getRouteName();
-
   foreach($route_match->getParameters() as $parameter) {
     if ($parameter instanceof ContentEntityInterface) {
       return $parameter;

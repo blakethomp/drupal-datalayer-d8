@@ -4,7 +4,11 @@ namespace Drupal\datalayer\Tests;
 use Drupal\simpletest\KernelTestBase;
 use Drupal\Tests\UnitTestCase;
 use Drupal\node\Entity\Node;
+use Drupal\user\Entity\User;
 use Drupal\Core\Language\LanguageInterface;
+use Drupal\Core\Url;
+use Symfony\Cmf\Component\Routing\RouteObjectInterface;
+use Symfony\Component\Routing\Route;
 
 /**
  * @file
@@ -18,7 +22,7 @@ class DataLayerUnitTests extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['datalayer', 'system', 'user', 'node'];
+  public static $modules = ['datalayer', 'system', 'user', 'node', 'taxonomy', 'text'];
 
   /**
    * {@inheritdoc}
@@ -90,58 +94,20 @@ class DataLayerUnitTests extends KernelTestBase {
    *
    * Returns False Without Load Functions.
    */
-  public function testDataLayerMenuGetAnyObjectReturnsFalseWithoutLoadFunctions() {
+  public function testDataLayerMenuGetAnyObjectReturnsNullWithoutContentEntityInterface() {
     $item = $this->setupMockNode();
-    $item['node/1']['load_functions'] = NULL;
-    $item_static = &drupal_static('menu_get_item');
-    $item_static = $item;
-    $return_type = FALSE;
-    $result = _datalayer_menu_get_any_object($return_type);
-    $this->assertEqual($return_type, FALSE);
-    $this->assertEqual($result, FALSE);
-  }
-
-  /**
-   * Test DataLayer Menu Get Any Object.
-   *
-   * Returns False Without Load Function Match.
-   */
-  public function testDataLayerMenuGetAnyObjectReturnsFalseWithoutLoadFunctionMatch() {
-    $item = $this->setupMockNode();
-    $item['node/1']['load_functions'] = array(1 => 'user_load');
-    $item_static = &drupal_static('menu_get_item');
-    $item_static = $item;
-    $return_type = FALSE;
-    $result = _datalayer_menu_get_any_object($return_type);
-    $this->assertEqual($return_type, FALSE);
-    $this->assertEqual($result, FALSE);
-  }
-
-  /**
-   * Test DataLayer Menu Get Any Object.
-   *
-   * Returns False With Incorrect Arg Position.
-   */
-  public function testDataLayerMenuGetAnyObjectReturnsFalseWithIncorrectArgPosition() {
-    $item = $this->setupMockNode();
-    $item['node/1']['load_functions'] = array('user_load');
-    $item_static = &drupal_static('menu_get_item');
-    $item_static = $item;
-    $return_type = FALSE;
-    $result = _datalayer_menu_get_any_object($return_type);
-    $this->assertEqual($return_type, FALSE);
-    $this->assertEqual($result, FALSE);
+    $result = _datalayer_menu_get_any_object();
+    $this->assertNull($result);
   }
 
   /**
    * Test DataLayer Menu Get Any Object Returns Object.
    */
   public function testDataLayerMenuGetAnyObjectReturnsObject() {
-    $item = $this->setupMockNode();
-    $return_type = FALSE;
-    $object = _datalayer_menu_get_any_object($return_type);
-    $this->assertEqual($return_type, 'node');
-    $this->assertEqual($object, $item['node/1']['map'][1]);
+    $this->setupMockRouteMatch();
+    $object = _datalayer_menu_get_any_object();
+    $this->assertTrue(is_object($object));
+    $this->assertEqual($object->getEntityTypeId(), 'node');
   }
 
   /**
@@ -150,7 +116,7 @@ class DataLayerUnitTests extends KernelTestBase {
   public function testDataLayerGetEntityTermsReturnsEmptyArray() {
     $item = $this->setupMockNode();
     $this->setupMockFieldMap();
-    $terms = _datalayer_get_entity_terms('node', 'page', $item['node/1']['map'][1]);
+    $terms = _datalayer_get_entity_terms($item);
     $this->assertEqual(array(), $terms);
   }
 
@@ -160,7 +126,7 @@ class DataLayerUnitTests extends KernelTestBase {
   public function testDataLayerGetEntityTermsReturnsTermArray() {
     $item = $this->setupMockNode();
     $this->setupMockEntityTerms();
-    $terms = _datalayer_get_entity_terms('node', 'article', $item['node/1']['map'][1]);
+    $terms = _datalayer_get_entity_terms($item);
     $this->assertEqual(array('tags' => array(1 => 'someTag')), $terms);
   }
 
@@ -171,7 +137,7 @@ class DataLayerUnitTests extends KernelTestBase {
     $this->setupEmptyDataLayer();
     $item = $this->setupMockNode();
     $this->setupMockEntityTerms();
-    $entity_data = _datalayer_get_entity_data($item['node/1']['map'][1]);
+    $entity_data = _datalayer_get_entity_data($item);
     $this->assertEqual(
       $this->getExpectedEntityDataArray(),
       $entity_data
@@ -182,8 +148,16 @@ class DataLayerUnitTests extends KernelTestBase {
    * Setup user.
    */
   public function setupMockUser() {
-    $user = \Drupal::currentUser();
-    $user->uid = 1;
+    $edit = array(
+      'uid'      => 1,
+      'name'     => 'admin',
+      'password' => 'password',
+      'langcode' => LanguageInterface::LANGCODE_NOT_SPECIFIED,
+    );
+
+    $user = User::create($edit);
+
+    return $user;
   }
 
   /**
@@ -205,33 +179,36 @@ class DataLayerUnitTests extends KernelTestBase {
    * Setup mock node.
    */
   public function setupMockNode() {
-    // Hijack static cache for menu_get_item call.
-    $item = &drupal_static('menu_get_item');
-    $_GET['q'] = 'node/1';
-    $item = array(
-      'node/1' => array(
-        'load_functions' => array(1 => 'node_load'),
-        'map' => array(
-          'node',
-        ),
-      ),
-    );
+    $item = &drupal_static(__FUNCTION__);
+    if (!$item) {
+      $user = $this->setupMockUser();
+      // Create a node.
+      $edit = array(
+        'uid'      => $user,
+        'name'     => 'admin',
+        'type'     => 'article',
+        'langcode' => LanguageInterface::LANGCODE_NOT_SPECIFIED,
+        'title'    => 'testing_transaction_exception',
+      );
+      $item = Node::create($edit);
+    }
 
-    // Create a node.
-    $edit = array(
-      'uid'      => 1,
-      'name'     => 'admin',
-      'type'     => 'page',
-      'langcode' => LanguageInterface::LANGCODE_NOT_SPECIFIED,
-      'title'    => 'testing_transaction_exception',
-    );
-
-    $item['node/1']['map'][] = Node::create($edit);
-
-    // Hijack static cache for entity_get_info call.
-    $entity = &drupal_static('entity_get_info');
-    $entity = array('node' => array('load hook' => 'node_load'));
     return $item;
+  }
+
+  /**
+   * Setup Mock RouteMatch.
+   */
+  public function setupMockRouteMatch() {
+    $item = $this->setupMockNode();
+    $request = &drupal_static(__FUNCTION__);
+    if (!$request) {
+      $request = \Drupal::request()->create('/node/1', 'GET', array('node' => $item));
+      $request->attributes->set(RouteObjectInterface::ROUTE_OBJECT, new Route('/node/{node}', array('node' => 1)));
+      $request->attributes->set(RouteObjectInterface::ROUTE_NAME, 'entity.node.canonical');
+      $request->attributes->set('node', $item);
+      $this->container->get('request_stack')->push($request);
+    }
   }
 
   /**

@@ -1,14 +1,16 @@
 datalayer.settings:
-  type: mapping
+  type: config_object
   label: Settings
   mapping:
-    datalayer_add_page_meta:
+    add_page_meta:
       type: boolean
-    datalayer_output_terms:
+    output_terms:
       type: boolean
-    datalayer_lib_helper:
+    output_fields:
       type: boolean
-    datalayer_global_entity_meta:
+    lib_helper:
+      type: boolean
+    global_entity_meta:
       type: integer
-    datalayer_vocabs:
+    vocabs:
       type: integer

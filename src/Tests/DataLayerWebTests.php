@@ -1,14 +1,21 @@
 <?php
 namespace Drupal\datalayer\Tests;
 
+use Drupal\simpletest\WebTestBase;
+
 /**
  * @file
  * Tests the functionality of the DataLayer module.
  */
 
-class DataLayerWebTests extends DrupalWebTestCase {
+class DataLayerWebTests extends WebTestBase {
 
-  protected $profile = 'testing';
+  /**
+   * Modules to install.
+   *
+   * @var array
+   */
+  public static $modules = ['node', 'datalayer'];
 
   /**
    * {@inheritdoc}
@@ -25,7 +32,7 @@ class DataLayerWebTests extends DrupalWebTestCase {
    * {@inheritdoc}
    */
   public function setUp() {
-    parent::setUp('datalayer');
+    parent::setUp();
     $admin_user = $this->drupalCreateUser(array(
       'access administration pages',
       'administer nodes',
@@ -51,6 +58,6 @@ class DataLayerWebTests extends DrupalWebTestCase {
    */
   public function testDataLayerJsLanguageSettings() {
     $output = $this->drupalGet('node');
-    $this->assertRaw('"dataLayer":{"languages"');
+    $this->assertRaw('"dataLayer":{"defaultLang"');
   }
 }

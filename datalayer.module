@@ -286,7 +286,6 @@ function _datalayer_get_entity_data($entity) {
 
     $entity_meta = $datalayer_settings->get('entity_meta');
     $selected_properties = $entity_meta ? array_filter($entity_meta) : NULL;
-
     // Build meta output...
     // Honor selective output configuration.
     if (empty($selected_properties)) {
@@ -313,7 +312,7 @@ function _datalayer_get_entity_data($entity) {
     }
 
     // Output field data.
-    if ($datalayer_settings->get('output_terms')) {
+    if ($datalayer_settings->get('output_fields')) {
       $output_data['entityFields'] = _datalayer_get_field_values($entity);
     }
 
@@ -428,6 +427,7 @@ function _datalayer_get_entity_terms($entity) {
     if ($field_info->getType() != "entity_reference" || $field_info->getSetting('target_type') != 'taxonomy_term') {
       continue;
     }
+
     // Collect terms from fields for return.
     foreach ($entity->{$field_name}->getValue() as $value) {
       if (isset($value['target_id'])) {

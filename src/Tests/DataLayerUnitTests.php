@@ -2,11 +2,13 @@
 namespace Drupal\datalayer\Tests;
 
 use Drupal\simpletest\KernelTestBase;
-use Drupal\Tests\UnitTestCase;
+use Drupal\Core\Language\LanguageInterface;
 use Drupal\node\Entity\Node;
 use Drupal\user\Entity\User;
-use Drupal\Core\Language\LanguageInterface;
-use Drupal\Core\Url;
+use Drupal\taxonomy\Entity\Term;
+use Drupal\node\Entity\NodeType;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
 use Symfony\Cmf\Component\Routing\RouteObjectInterface;
 use Symfony\Component\Routing\Route;
 
@@ -22,7 +24,30 @@ class DataLayerUnitTests extends KernelTestBase {
    *
    * @var array
    */
-  public static $modules = ['datalayer', 'system', 'user', 'node', 'taxonomy', 'text'];
+  public static $modules = ['datalayer', 'system', 'user', 'node', 'taxonomy', 'field', 'text'];
+
+  /**
+   * A test user.
+   *
+   * @var \Drupal\user\User
+   */
+  protected $user;
+
+
+  /**
+   * A test node.
+   *
+   * @var \Drupal\node\Node
+   */
+  protected $node;
+
+
+  /**
+   * A test taxonomy term.
+   *
+   * @var \Drupal\taxonomy\Term
+   */
+  protected $term;
 
   /**
    * {@inheritdoc}
@@ -40,14 +65,42 @@ class DataLayerUnitTests extends KernelTestBase {
    */
   public function setUp() {
     parent::setUp();
-    $this->installConfig(['system']);
+    $this->installEntitySchema('user');
+    $this->installEntitySchema('node');
+    $this->installEntitySchema('taxonomy_term');
+    $this->installConfig(['system', 'datalayer']);
+
+    $this->setupMockFieldConfig();
+  }
+
+  /**
+   * Create field definitions for taxonomy term
+   */
+  public function setupMockFieldConfig() {
+    NodeType::create([
+      'type' => 'article',
+    ])->save();
+
+    FieldStorageConfig::create([
+      'entity_type' => 'node',
+      'field_name' => 'field_tags',
+      'type' => 'entity_reference',
+      'settings' => [
+        'target_type' => 'taxonomy_term',
+      ],
+    ])->save();
+
+    FieldConfig::create([
+      'field_name' => 'field_tags',
+      'entity_type' => 'node',
+      'bundle' => 'article',
+    ])->save();
   }
 
   /**
    * Test DataLayer Defaults function.
    */
   public function testDataLayerDefaults() {
-    // $this->setupMockLanguage();
     $this->assertEqual(
       array('drupalLanguage' => $this->defaultLanguageData()['id'], 'drupalCountry' => $this->config('system.date')->get('country.default')),
       _datalayer_defaults()
@@ -95,7 +148,6 @@ class DataLayerUnitTests extends KernelTestBase {
    * Returns False Without Load Functions.
    */
   public function testDataLayerMenuGetAnyObjectReturnsNullWithoutContentEntityInterface() {
-    $item = $this->setupMockNode();
     $result = _datalayer_menu_get_any_object();
     $this->assertNull($result);
   }
@@ -114,9 +166,8 @@ class DataLayerUnitTests extends KernelTestBase {
    * Test DataLayer Get Entity Terms Returns Empty Array.
    */
   public function testDataLayerGetEntityTermsReturnsEmptyArray() {
-    $item = $this->setupMockNode();
-    $this->setupMockFieldMap();
-    $terms = _datalayer_get_entity_terms($item);
+    $this->setupMockNode();
+    $terms = _datalayer_get_entity_terms($this->node);
     $this->assertEqual(array(), $terms);
   }
 
@@ -124,9 +175,9 @@ class DataLayerUnitTests extends KernelTestBase {
    * Test DataLayer Get Entity Terms Returns Term Array.
    */
   public function testDataLayerGetEntityTermsReturnsTermArray() {
-    $item = $this->setupMockNode();
-    $this->setupMockEntityTerms();
-    $terms = _datalayer_get_entity_terms($item);
+    $this->setupMockNodeWithTerm();
+    var_dump($this->node->field_tags[0]->getValue());
+    $terms = _datalayer_get_entity_terms($this->node);
     $this->assertEqual(array('tags' => array(1 => 'someTag')), $terms);
   }
 
@@ -135,9 +186,9 @@ class DataLayerUnitTests extends KernelTestBase {
    */
   public function testDataLayerGetEntityDataReturnsEntityDataArray() {
     $this->setupEmptyDataLayer();
-    $item = $this->setupMockNode();
-    $this->setupMockEntityTerms();
-    $entity_data = _datalayer_get_entity_data($item);
+    $this->setupMockNodeWithTerm();
+    var_dump($this->node->field_tags[0]->getValue());
+    $entity_data = _datalayer_get_entity_data($this->node);
     $this->assertEqual(
       $this->getExpectedEntityDataArray(),
       $entity_data
@@ -148,24 +199,15 @@ class DataLayerUnitTests extends KernelTestBase {
    * Setup user.
    */
   public function setupMockUser() {
-    $edit = array(
+    $data = array(
       'uid'      => 1,
       'name'     => 'admin',
       'password' => 'password',
       'langcode' => LanguageInterface::LANGCODE_NOT_SPECIFIED,
     );
 
-    $user = User::create($edit);
-
-    return $user;
-  }
-
-  /**
-   * Setup language.
-   */
-  public function setupMockLanguage($lang = 'en') {
-    $language = \Drupal::languageManager()->getCurrentLanguage();
-    $language->getId();
+    $this->user = User::create($data);
+    $this->user->save();
   }
 
   /**
@@ -179,121 +221,58 @@ class DataLayerUnitTests extends KernelTestBase {
    * Setup mock node.
    */
   public function setupMockNode() {
-    $item = &drupal_static(__FUNCTION__);
-    if (!$item) {
-      $user = $this->setupMockUser();
-      // Create a node.
-      $edit = array(
-        'uid'      => $user,
-        'name'     => 'admin',
-        'type'     => 'article',
-        'langcode' => LanguageInterface::LANGCODE_NOT_SPECIFIED,
-        'title'    => 'testing_transaction_exception',
-      );
-      $item = Node::create($edit);
-    }
+    $this->setupMockUser();
+    // Create a node.
+    $data = array(
+      'uid'      => $this->user->id(),
+      'name'     => 'admin',
+      'type'     => 'article',
+      'langcode' => LanguageInterface::LANGCODE_NOT_SPECIFIED,
+      'title'    => 'My Article',
+      'status' => 1,
+      'nid' => 1,
+      'vid' => 1,
+      'type' => 'article',
+      'created' => '1435019805',
+    );
+    $this->node = Node::create($data);
+    $this->node->save();
+  }
 
-    return $item;
+  /**
+   * Setup mock node.
+   */
+  public function setupMockNodeWithTerm() {
+    $this->setupMockNode();
+    $this->setupMockEntityTerm();
+    $this->node->set('field_tags', array('target_id' => $this->term->id()));
   }
 
   /**
    * Setup Mock RouteMatch.
    */
   public function setupMockRouteMatch() {
-    $item = $this->setupMockNode();
+    $this->setupMockNode();
     $request = &drupal_static(__FUNCTION__);
     if (!$request) {
-      $request = \Drupal::request()->create('/node/1', 'GET', array('node' => $item));
+      $request = \Drupal::request()->create('/node/1', 'GET', array('node' => $this->node));
       $request->attributes->set(RouteObjectInterface::ROUTE_OBJECT, new Route('/node/{node}', array('node' => 1)));
       $request->attributes->set(RouteObjectInterface::ROUTE_NAME, 'entity.node.canonical');
-      $request->attributes->set('node', $item);
+      $request->attributes->set('node', $this->node);
       $this->container->get('request_stack')->push($request);
     }
   }
 
   /**
-   * Setup Mock Field Map.
-   */
-  public function setupMockFieldMap() {
-    $field_map = &drupal_static('_field_info_field_cache');
-    $field_map = new DataLayerMockFieldInfo();
-  }
-
-  /**
-   * Setup Mock Field Language.
-   */
-  public function setupMockFieldLanguage() {
-    $field_language = &drupal_static('field_language');
-    $field_language = array(
-      'node' => array(
-        1 => array(
-          'en' => array(
-            'field_tags' => 'und',
-          ),
-        ),
-      ),
-    );
-  }
-
-  /**
-   * Setup Mock Entity Info.
-   */
-  public function setupMockEntityInfo() {
-    $entity_info = &drupal_static('entity_get_info');
-    $entity_info = array(
-      'node' => array(
-        'entity keys' => array(
-          'id' => 'nid',
-          'revision' => 'vid',
-          'bundle' => 'type',
-          'label' => 'title',
-          'language' => 'language',
-        ),
-      ),
-      'taxonomy_term' => array(
-        'controller class' => 'TaxonomyTermController',
-        'base table' => 'taxonomy_term_data',
-        'uri callback' => 'taxonomy_term_uri',
-        'entity keys' => array(
-          'id' => 'tid',
-          'bundle' => 'vocabulary_machine_name',
-          'label' => 'name',
-          'revision' => '',
-        ),
-        'bundles' => array(
-          'tags' => array(
-            'label' => 'Tags',
-            'admin' => array(
-              'path' => 'admin/structure/taxonomy/%taxonomy_vocabulary_machine_name',
-              'real path' => 'admin/structure/taxonomy/tags',
-              'bundle argument' => 3,
-              'access arguments' => array(0 => 'administer taxonomy'),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /**
-   * Setup Mock Entity Controller.
-   */
-  public function setupMockEntityController() {
-    $entity_contoller = &drupal_static('entity_get_controller');
-    $entity_contoller = array(
-      'taxonomy_term' => new DataLayerMockEntityController(),
-    );
-  }
-
-  /**
    * Setup Mock Entity Terms.
    */
-  public function setupMockEntityTerms() {
-    $this->setupMockFieldMap();
-    $this->setupMockLanguage('en');
-    $this->setupMockFieldLanguage();
-    $this->setupMockEntityInfo();
-    $this->setupMockEntityController();
+  public function setupMockEntityTerm() {
+    $this->term = Term::create(array(
+      'name' => 'someTag',
+      'vid' => 'tags',
+      'tid' => 1,
+    ));
+    $this->term->save();
   }
 
   /**
@@ -303,15 +282,14 @@ class DataLayerUnitTests extends KernelTestBase {
     return array(
       'entityType' => 'node',
       'entityBundle' => 'article',
-      'entityId' => 1,
+      'entityId' => '1',
       'entityLabel' => 'My Article',
       'entityLangcode' => 'und',
-      'entityTnid' => 0,
-      'entityVid' => 1,
+      'entityVid' => '1',
       'entityName' => 'admin',
-      'entityUid' => 1,
+      'entityUid' => '1',
       'entityCreated' => '1435019805',
-      'entityStatus' => 1,
+      'entityStatus' => '1',
       'entityTaxonomy' => array(
         'tags' => array(
           1 => 'someTag',

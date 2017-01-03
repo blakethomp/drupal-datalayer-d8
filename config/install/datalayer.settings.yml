@@ -1,5 +1,6 @@
-datalayer_add_page_meta: true
-datalayer_output_terms: true
-datalayer_lib_helper: false
-datalayer_global_entity_meta: 0
-datalayer_vocabs: 0
+add_page_meta: true
+output_terms: true
+output_fields: false
+lib_helper: false
+global_entity_meta: 0
+vocabs: 0

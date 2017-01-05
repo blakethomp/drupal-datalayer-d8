@@ -10,7 +10,9 @@ datalayer.settings:
       type: boolean
     lib_helper:
       type: boolean
-    global_entity_meta:
-      type: integer
+    entity_meta:
+      type: array
     vocabs:
-      type: integer
+      type: array
+    expose_user_details_roles:
+      type: array

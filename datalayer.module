@@ -227,7 +227,6 @@ function datalayer_datalayer_meta() {
 function datalayer_get_page_data() {
   $entity = _datalayer_menu_get_any_object();
   if (is_object($entity)) {
-    // @todo Add field data.
     // Populate entity properties and values.
     return _datalayer_get_entity_data($entity);
   }

@@ -74,7 +74,7 @@ class DatalayerSettingsForm extends ConfigFormBase {
       '#type' => 'checkbox',
       '#states' => [
         'enabled' => [
-          ':input[name="datalayer_add_page_meta"]' => [
+          ':input[name="add_page_meta"]' => [
             'checked' => TRUE
             ]
           ]
@@ -94,7 +94,7 @@ class DatalayerSettingsForm extends ConfigFormBase {
       '#default_value' => $datalayer_settings->get('lib_helper'),
       '#description' => t('Provides the ability to process messages passed to the dataLayer. See: :link on GitHub.', [
         ':link' => \Drupal::l(t('data-layer-helper'), Url::fromUri('https://github.com/google/data-layer-helper'))
-        ]),
+      ]),
     ];
 
     $form['entity_meta'] = [
@@ -108,7 +108,7 @@ class DatalayerSettingsForm extends ConfigFormBase {
       '#type' => 'checkboxes',
       '#states' => [
         'enabled' => [
-          ':input[name="datalayer_add_page_meta"]' => [
+          ':input[name="add_page_meta"]' => [
             'checked' => TRUE
             ]
           ]
@@ -129,7 +129,7 @@ class DatalayerSettingsForm extends ConfigFormBase {
       '#type' => 'checkboxes',
       '#states' => [
         'enabled' => [
-          ':input[name="datalayer_output_terms"]' => [
+          ':input[name="output_terms"]' => [
             'checked' => TRUE
             ]
           ]

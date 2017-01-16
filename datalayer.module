@@ -79,37 +79,17 @@ function datalayer_libraries_info() {
  * Add data for output.
  */
 function datalayer_get_data_from_page() {
-
-  $user = \Drupal::currentUser();
   $datalayer_settings = \Drupal::config('datalayer.settings');
+  $user = \Drupal::currentUser();
 
   // Add details about the page entity.
   if ($datalayer_settings->get('add_page_meta')) {
     datalayer_add(datalayer_get_page_data());
   }
 
-  // Expose user details (on configured URL patterns).
-  if (!$user->isAnonymous()) {
-    $exp_user_urls = $datalayer_settings->get('expose_user_details');
-    $roles = $datalayer_settings->get('expose_user_details_roles');
-    $exp_user_roles = $roles ? array_filter($roles) : [];
-    $matched_roles = array_intersect(array_keys($user->getRoles()), $exp_user_roles);
-    // Honor settings.
-    if ($exp_user_urls && (count($exp_user_roles) == 0 || count($matched_roles))) {
-      $path = Url::fromRoute("<current>")->toString();
-      $path_matcher = \Drupal::service('path.matcher');
-      $alias_manager = \Drupal::service('path.alias_manager');
-      $path_alias = $alias_manager->getAliasByPath($path);
-      if ($path_matcher->matchPath($path, $exp_user_urls) || $path_matcher->matchPath($path_alias, $exp_user_urls)) {
-        datalayer_add(array(
-          'userName' => $user->getUsername(),
-          'userMail' => $user->getEmail(),
-          'userRoles' => $user->getRoles(),
-          'userCreated' => $user->getAccount()->created,
-          'userAccess' => $user->getLastAccessedTime(),
-        ));
-      }
-    }
+  // Expose user details.
+  if ($datalayer_settings->get('expose_user_details')) {
+    datalayer_add(datalayer_get_user_data());
   }
 
   // Always output active uid.
@@ -232,6 +212,45 @@ function datalayer_get_page_data() {
   }
 
   return array();
+}
+
+/**
+ * Return all user data based on configured URL patterns.
+ *
+ * @return array
+ */
+function datalayer_get_user_data() {
+  $user = \Drupal::currentUser();
+  $user_data = [];
+  if (!$user->isAnonymous()) {
+    $user = \Drupal\user\Entity\User::load($user->id());
+    $datalayer_settings = \Drupal::config('datalayer.settings');
+    $roles = $datalayer_settings->get('expose_user_details_roles');
+    $exp_user_urls = $datalayer_settings->get('expose_user_details');
+    $exp_user_roles = $roles ? array_filter($roles) : [];
+    $matched_roles = array_intersect($user->getRoles(), $exp_user_roles);
+    // Honor settings.
+    if ($exp_user_urls && (count($exp_user_roles) == 0 || count($matched_roles))) {
+      $path = Url::fromRoute("<current>")->toString();
+      $path_matcher = \Drupal::service('path.matcher');
+      $alias_manager = \Drupal::service('path.alias_manager');
+      $path_alias = $alias_manager->getAliasByPath($path);
+      if ($path_matcher->matchPath($path, $exp_user_urls) || $path_matcher->matchPath($path_alias, $exp_user_urls)) {
+        $user_data = [
+          'userName' => $user->getUsername(),
+          'userMail' => $user->getEmail(),
+          'userRoles' => $user->getRoles(),
+          'userCreated' => $user->created,
+          'userAccess' => $user->getLastAccessedTime(),
+        ];
+        if ($datalayer_settings->get('expose_user_details_fields')) {
+          $user_data['userFields'] = _datalayer_get_field_values($user);
+        }
+      }
+    }
+  }
+
+  return $user_data;
 }
 
 
@@ -456,6 +475,7 @@ function _datalayer_get_field_values($entity) {
     if (method_exists($field_info, 'getThirdPartySetting') &&
       $field_info->getThirdPartySetting('datalayer', 'expose', 0)) {
       $field_type = $field_info->getType();
+      $fields[$field_name] = [];
       foreach ($entity->{$field_name} as $field_item) {
         $fields[$field_name][] = _datalayer_field_get_value($field_item, $field_type);
       }

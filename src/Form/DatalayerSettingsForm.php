@@ -35,6 +35,7 @@ class DatalayerSettingsForm extends ConfigFormBase {
       ->set('vocabs', $form_state->getValue('vocabs'))
       ->set('expose_user_details', $form_state->getValue('expose_user_details'))
       ->set('expose_user_details_roles', $form_state->getValue('expose_user_details_roles'))
+      ->set('expose_user_details_fields', $form_state->getValue('expose_user_details_fields'))
       ->save();
 
     parent::submitForm($form, $form_state);
@@ -166,6 +167,12 @@ class DatalayerSettingsForm extends ConfigFormBase {
       '#title' => t('Expose user roles'),
       '#default_value' => $datalayer_settings->get('expose_user_details_roles'),
       '#description' => t('Roles that should expose active user details to the dataLayer. Leaving empty will expose to all roles.'),
+    ];
+
+    $form['user']['expose_user_details_fields'] = [
+      '#type' => 'checkbox',
+      '#title' => t('Expose fields added to user entity'),
+      '#default_value' => $datalayer_settings->get('expose_user_details_fields'),
     ];
 
     return parent::buildForm($form, $form_state);

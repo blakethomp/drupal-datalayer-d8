@@ -16,3 +16,5 @@ datalayer.settings:
       type: array
     expose_user_details_roles:
       type: array
+    expose_user_details_fields:
+      type: boolean

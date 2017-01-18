@@ -93,8 +93,8 @@ class DatalayerSettingsForm extends ConfigFormBase {
       '#type' => 'checkbox',
       '#title' => t('Include "data layer helper" library'),
       '#default_value' => $datalayer_settings->get('lib_helper'),
-      '#description' => t('Provides the ability to process messages passed to the dataLayer. See: :link on GitHub.', [
-        ':link' => \Drupal::l(t('data-layer-helper'), Url::fromUri('https://github.com/google/data-layer-helper'))
+      '#description' => t('Provides the ability to process messages passed to the dataLayer. See: <a href=":helper">data-layer-helper</a> on GitHub.', [
+        ':helper' => 'https://github.com/google/data-layer-helper'
       ]),
     ];
 
@@ -171,7 +171,7 @@ class DatalayerSettingsForm extends ConfigFormBase {
 
     $form['user']['expose_user_details_fields'] = [
       '#type' => 'checkbox',
-      '#title' => t('Expose fields added to user entity'),
+      '#title' => t('Include enabled user field values.'),
       '#default_value' => $datalayer_settings->get('expose_user_details_fields'),
     ];
 

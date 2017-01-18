@@ -107,6 +107,7 @@ function datalayer_page_attachments(array &$attachments) {
 
   if (is_null($datalayer_attachments)) {
     $datalayer_attachments = datalayer_get_data_from_page();
+
     // Allow modules to alter data with hook_datalayer_alter().
     \Drupal::moduleHandler()->alter('datalayer', $datalayer_attachments);
     if (!$datalayer_attachments) {

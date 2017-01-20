@@ -4,5 +4,6 @@ output_fields: false
 lib_helper: false
 entity_meta: {  }
 vocabs: {  }
+expose_user_details: ''
 expose_user_details_roles: {  }
 expose_user_details_fields: false

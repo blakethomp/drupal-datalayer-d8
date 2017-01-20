@@ -176,7 +176,6 @@ class DataLayerUnitTests extends KernelTestBase {
    */
   public function testDataLayerGetEntityTermsReturnsTermArray() {
     $this->setupMockNodeWithTerm();
-    var_dump($this->node->field_tags[0]->getValue());
     $terms = _datalayer_get_entity_terms($this->node);
     $this->assertEqual(array('tags' => array(1 => 'someTag')), $terms);
   }
@@ -187,7 +186,6 @@ class DataLayerUnitTests extends KernelTestBase {
   public function testDataLayerGetEntityDataReturnsEntityDataArray() {
     $this->setupEmptyDataLayer();
     $this->setupMockNodeWithTerm();
-    var_dump($this->node->field_tags[0]->getValue());
     $entity_data = _datalayer_get_entity_data($this->node);
     $this->assertEqual(
       $this->getExpectedEntityDataArray(),

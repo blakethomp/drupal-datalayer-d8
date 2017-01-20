@@ -171,7 +171,7 @@ class DatalayerSettingsForm extends ConfigFormBase {
 
     $form['user']['expose_user_details_fields'] = [
       '#type' => 'checkbox',
-      '#title' => t('Include enabled user field values.'),
+      '#title' => t('Include enabled user field values'),
       '#default_value' => $datalayer_settings->get('expose_user_details_fields'),
     ];
 

@@ -103,33 +103,27 @@ function datalayer_get_data_from_page() {
  * Load all meta tags for this page.
  */
 function datalayer_page_attachments(array &$attachments) {
-  $datalayer_attachments = &drupal_static('datalayer_attachments');
+  $datalayer_attachment = datalayer_get_data_from_page();
 
-  if (is_null($datalayer_attachments)) {
-    $datalayer_attachments = datalayer_get_data_from_page();
+  // Allow modules to alter data with hook_datalayer_alter().
+  \Drupal::moduleHandler()->alter('datalayer', $datalayer_attachment);
 
-    // Allow modules to alter data with hook_datalayer_alter().
-    \Drupal::moduleHandler()->alter('datalayer', $datalayer_attachments);
-    if (!$datalayer_attachments) {
-      return;
-    }
-
-    if (empty($attachments['#attached'])) {
-      $attachments['#attached'] = [];
-    }
-    if (empty($attachments['#attached']['html_head'])) {
-      $attachments['#attached']['html_head'] = [];
-    }
-
-    $attachments['#attached']['html_head'][] = [
-      [
-        '#type' => 'html_tag',
-        '#tag' => 'script',
-        '#value' => 'dataLayer = ['. Json::encode($datalayer_attachments) .'];',
-      ],
-      'datalayers-js'
-    ];
+  if (empty($attachments['#attached'])) {
+    $attachments['#attached'] = [];
   }
+  if (empty($attachments['#attached']['html_head'])) {
+    $attachments['#attached']['html_head'] = [];
+  }
+
+  $attachments['#attached']['html_head'][] = [
+    [
+      '#type' => 'html_tag',
+      '#tag' => 'script',
+      '#value' => 'dataLayer = ['. Json::encode($datalayer_attachment) .'];',
+    ],
+    'datalayers-js'
+  ];
+
 
   // Include data-layer-helper library.
   if (\Drupal::config('datalayer.settings')->get('lib_helper')) {

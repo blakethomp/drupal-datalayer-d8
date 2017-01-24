@@ -235,7 +235,7 @@ function datalayer_get_user_data() {
           'userName' => $user->getUsername(),
           'userMail' => $user->getEmail(),
           'userRoles' => $user->getRoles(),
-          'userCreated' => $user->created,
+          'userCreated' => $user->getCreatedTime(),
           'userAccess' => $user->getLastAccessedTime(),
         ];
         if ($datalayer_settings->get('expose_user_details_fields')) {

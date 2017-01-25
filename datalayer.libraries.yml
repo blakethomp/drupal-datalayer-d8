@@ -5,6 +5,7 @@ behaviors:
   dependencies:
     - core/jquery
     - core/drupalSettings
+    - core/drupal
 helper:
   js:
     /libraries/data-layer-helper/data-layer-helper.js: {}

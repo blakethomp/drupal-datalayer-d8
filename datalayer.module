@@ -93,7 +93,12 @@ function datalayer_get_data_from_page() {
   }
 
   // Always output active uid.
-  return datalayer_add(array('userUid' => $user->id()));
+  $datalayer = datalayer_add(array('userUid' => $user->id()));
+
+  // Allow modules to alter data with hook_datalayer_alter().
+  \Drupal::moduleHandler()->alter('datalayer', $datalayer);
+
+  return $datalayer;
 }
 
 
@@ -103,11 +108,6 @@ function datalayer_get_data_from_page() {
  * Load all meta tags for this page.
  */
 function datalayer_page_attachments(array &$attachments) {
-  $datalayer_attachment = datalayer_get_data_from_page();
-
-  // Allow modules to alter data with hook_datalayer_alter().
-  \Drupal::moduleHandler()->alter('datalayer', $datalayer_attachment);
-
   if (empty($attachments['#attached'])) {
     $attachments['#attached'] = [];
   }
@@ -115,15 +115,15 @@ function datalayer_page_attachments(array &$attachments) {
     $attachments['#attached']['html_head'] = [];
   }
 
+  $datalayer_attachment = datalayer_get_data_from_page();
   $attachments['#attached']['html_head'][] = [
     [
       '#type' => 'html_tag',
       '#tag' => 'script',
-      '#value' => 'dataLayer = ['. Json::encode($datalayer_attachment) .'];',
+      '#value' => 'var dataLayer = ['. Json::encode($datalayer_attachment) .'];',
     ],
     'datalayers-js'
   ];
-
 
   // Include data-layer-helper library.
   if (\Drupal::config('datalayer.settings')->get('lib_helper')) {
@@ -502,4 +502,15 @@ function _datalayer_field_get_value($field_item, $field_type) {
   }
 
   return $value;
+}
+
+/**
+ * Implements hook_google_tag_snippets_alter()
+ */
+function datalayer_google_tag_snippets_alter(&$snippets) {
+  $config = \Drupal::config('google_tag.settings');
+  $data_layer = $config->get('data_layer');
+  $data_layer = trim(json_encode($data_layer), '"');
+  // concat the dataLayer module variable with the google_tag dataLayer array
+  $snippets['data_layer'] = preg_replace("/($data_layer = )(\[.*?\])(;.*$)/", '$1dataLayer.concat($2)$3', $snippets['data_layer']);
 }
